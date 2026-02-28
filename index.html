@@ -1,0 +1,507 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カードデータ登録ツール</title>
+  
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel (ブラウザ上でJSXを変換) -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <style>
+    /* 読み込み中のチラつき防止 */
+    body { background-color: #f8fafc; }
+    #root { display: contents; }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect } = React;
+
+    // アイコンコンポーネント (Lucideの代わり)
+    const Icons = {
+      Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+      Wand2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"></path><path d="m14 7 3 3"></path><path d="M5 6v4"></path><path d="M19 14v4"></path><path d="M10 2v2"></path><path d="M7 8H3"></path><path d="M21 16h-4"></path><path d="M11 3H9"></path></svg>,
+      Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>,
+      Image: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>,
+      Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
+      Trash2: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>,
+      Save: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
+      X: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
+      Copy: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+    };
+
+    // 許可されたステータスリスト
+    const ALLOWED_STATS = [
+      "攻撃%", "会心率", "会心ダメージ", "防御無視", "ダメージ倍率",
+      "対ボス与ダメ増", "対高HP与ダメ増", "対低HP与ダメ増", "状態異常与ダメ増",
+      "命中率", "状態異常命中率", "防御%", "HP%", "ガード率", "回避率",
+      "会心率耐性", "会心ダメ耐性", "対高低HPダメ耐性", "対ボス被ダメ減",
+      "状態異常耐性", "状態異常ダメ耐性", "与治療効果", "被治療効果", "HP吸収率",
+      "対○○与ダメ増", "対○○被ダメ減"
+    ];
+
+    function App() {
+      const [showSettings, setShowSettings] = useState(false);
+      const [settings, setSettings] = useState({
+        githubToken: '',
+        githubRepo: '', 
+        geminiKey: '',
+        gasUrl: ''
+      });
+
+      const [mainImage, setMainImage] = useState(null);
+      const [mainImagePreview, setMainImagePreview] = useState('');
+      const [iconImage, setIconImage] = useState(null);
+      const [iconImagePreview, setIconImagePreview] = useState('');
+
+      const [formData, setFormData] = useState({
+        id: '', name: '', rank: '', rare: '', category: '', special_status: '', special_full_status: '', stats: []
+      });
+
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [isSubmitting, setIsSubmitting] = useState(false);
+      const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+
+      useEffect(() => {
+        const savedSettings = localStorage.getItem('cardUploaderSettings');
+        if (savedSettings) {
+          setSettings(JSON.parse(savedSettings));
+        } else {
+          setShowSettings(true); 
+        }
+      }, []);
+
+      const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+      };
+
+      const handleSettingChange = (e) => {
+        const { name, value } = e.target;
+        setSettings(prev => ({ ...prev, [name]: value }));
+      };
+
+      const saveSettings = () => {
+        localStorage.setItem('cardUploaderSettings', JSON.stringify(settings));
+        setShowSettings(false);
+        showToast('設定を保存しました');
+      };
+
+      const handleImageChange = (e, type) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const previewUrl = URL.createObjectURL(file);
+        if (type === 'main') {
+          setMainImage(file);
+          setMainImagePreview(previewUrl);
+        } else {
+          setIconImage(file);
+          setIconImagePreview(previewUrl);
+        }
+      };
+
+      const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+      });
+
+      const analyzeImage = async () => {
+        if (!mainImage) {
+          showToast('カード詳細画像を選択してください', 'error');
+          return;
+        }
+
+        const apiKey = settings.geminiKey || "";
+        if(!apiKey) {
+            showToast('Gemini API Keyが設定されていません', 'error');
+            setShowSettings(true);
+            return;
+        }
+
+        setIsAnalyzing(true);
+        try {
+          const base64Data = await toBase64(mainImage);
+          const prompt = `あなたはゲーム「アッシュテイル（Ash Tale）」のデータアシスタントです。
+アップロードされたカードのステータス画面を解析し、以下の情報をJSON形式で抽出してください。
+
+{
+  "name": "カードの名前（例：カプチーノ）",
+  "rank": "ローマ数字のランクをアラビア数字で（例：VIなら6）",
+  "rare": "レア度。枠の色や文字から推測（天、赤、金など）",
+  "category": "カードの種類。画像に「〇〇カード」とあればその部分（武器、腕、防具、装飾、頭）",
+  "special_status": "スキル名や固有効果名など、純粋なステータス増加以外の効果（例：ケーキパーティ）。複数ある場合は「、」で区切る。なければ空文字",
+  "special_full_status": "固有効果の詳細説明などあれば（通常は空文字でよい）。複数ある場合は「、」区切り",
+  "stats": [
+    {"name": "ステータス名", "value": "数値のみ（例:15）"}
+  ]
+}
+
+【重要ルール】
+- JSON以外のテキストは一切出力しないでください。
+- 特殊効果欄に「攻撃+15」「攻撃+24」のように同じステータスが複数ある場合は、それらの数値を合計して {"name": "攻撃%", "value": "39"} のようにひとまとめにしてください。
+- ステータス名は必ず以下のリストから最も意味が近いものを一言一句違わず選択してください。リストにない独自のステータス名は使用しないでください。
+  [${ALLOWED_STATS.join(', ')}]
+- ※画像で「攻撃」となっている場合は「攻撃%」、「防御」は「防御%」、「HP」は「HP%」とするなど、適宜リスト内の名前に補正してください。
+- ※「対ファイ/ウィ/スカ/プリ/サモ/剣豪/プレ与ダメ増」は「対○○与ダメ増」とし、「対ファイ/ウィ/スカ/プリ/サモ/剣豪/プレ被ダメ減」は「対○○被ダメ減」としてください。`;
+
+          let res;
+          let delay = 1000;
+          for (let i = 0; i < 5; i++) {
+            try {
+              res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{
+                    role: "user",
+                    parts: [
+                      { text: prompt },
+                      { inlineData: { mimeType: mainImage.type, data: base64Data } }
+                    ]
+                  }],
+                  generationConfig: { responseMimeType: "application/json" }
+                })
+              });
+              if (res.ok) break;
+              if (i === 4) throw new Error(`APIレスポンスエラー: ${res.status}`);
+            } catch (e) {
+              if (i === 4) throw e;
+            }
+            await new Promise(r => setTimeout(r, delay));
+            delay *= 2;
+          }
+          
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!text) throw new Error("解析結果が空でした");
+          
+          const result = JSON.parse(text);
+
+          const mappedStats = (result.stats || []).map((s, i) => ({
+            id: Date.now() + i,
+            name: s.name,
+            value: s.value
+          }));
+
+          setFormData(prev => ({
+            ...prev,
+            name: result.name || '',
+            rank: result.rank || '',
+            rare: result.rare || '',
+            category: result.category || '',
+            special_status: result.special_status || '',
+            special_full_status: result.special_full_status || '',
+            stats: mappedStats
+          }));
+
+          showToast('画像の解析が完了しました');
+        } catch (err) {
+          console.error(err);
+          showToast('画像の読み取りに失敗しました。', 'error');
+        } finally {
+          setIsAnalyzing(false);
+        }
+      };
+
+      const uploadToGitHub = async (path, base64Content, message) => {
+        const url = `https://api.github.com/repos/${settings.githubRepo}/contents/${path}`;
+        let sha = null;
+        try {
+          const getRes = await fetch(url, {
+            headers: { 'Authorization': `Bearer ${settings.githubToken}` }
+          });
+          if (getRes.ok) {
+            const data = await getRes.json();
+            sha = data.sha;
+          }
+        } catch (e) {}
+
+        const body = { message, content: base64Content };
+        if (sha) body.sha = sha;
+
+        const putRes = await fetch(url, {
+          method: 'PUT',
+          headers: {
+            'Authorization': `Bearer ${settings.githubToken}`,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(body)
+        });
+
+        if (!putRes.ok) {
+          throw new Error(`GitHub Upload Failed: ${path}`);
+        }
+      };
+
+      const handleSubmit = async () => {
+        if (!formData.id) return showToast('画像に付けるIDを入力してください', 'error');
+        if (!mainImage || !iconImage) return showToast('メインとアイコン画像を選択してください', 'error');
+        if (!settings.githubToken || !settings.githubRepo) {
+          showToast('GitHubの設定を行ってください', 'error');
+          return setShowSettings(true);
+        }
+
+        setIsSubmitting(true);
+        try {
+          const mainBase64 = await toBase64(mainImage);
+          const iconBase64 = await toBase64(iconImage);
+          
+          const mainPath = `img/${formData.id}.jpg`;
+          const iconPath = `img/${formData.id}_icon.jpg`;
+
+          await uploadToGitHub(mainPath, mainBase64, `Add ${formData.name} image`);
+          await uploadToGitHub(iconPath, iconBase64, `Add ${formData.name} icon`);
+
+          if (settings.gasUrl) {
+            const payload = {
+              id: formData.id,
+              name: formData.name,
+              rank: formData.rank,
+              rare: formData.rare,
+              category: formData.category,
+              icon: iconPath,
+              image: mainPath,
+              special_status: formData.special_status,
+              special_full_status: formData.special_full_status
+            };
+
+            formData.stats.forEach(s => {
+              if (s.name && s.value) payload[s.name] = s.value;
+            });
+
+            await fetch(settings.gasUrl, {
+              method: 'POST',
+              mode: 'no-cors',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+          }
+
+          showToast('登録が完了しました！');
+          setFormData({ id: '', name: '', rank: '', rare: '', category: '', special_status: '', special_full_status: '', stats: [] });
+          setMainImage(null); setMainImagePreview('');
+          setIconImage(null); setIconImagePreview('');
+
+        } catch (err) {
+          console.error(err);
+          showToast('エラーが発生しました: ' + err.message, 'error');
+        } finally {
+          setIsSubmitting(false);
+        }
+      };
+
+      const addStat = () => setFormData(p => ({ ...p, stats: [...p.stats, { id: Date.now(), name: '', value: '' }] }));
+      const updateStat = (id, f, v) => setFormData(p => ({ ...p, stats: p.stats.map(s => s.id === id ? { ...s, [f]: v } : s) }));
+      const removeStat = (id) => setFormData(p => ({ ...p, stats: p.stats.filter(s => s.id !== id) }));
+      const handleInputChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
+      const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast('コピーしました'); };
+
+      const gasScriptText = `function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var row = new Array(headers.length).fill("");
+  for (var key in data) {
+    var val = data[key];
+    if (val === undefined || val === null || val === "") continue;
+    var idx = headers.indexOf(key);
+    if (idx !== -1) {
+      row[idx] = val;
+    } else {
+      sheet.insertColumnAfter(sheet.getLastColumn());
+      headers.push(key);
+      sheet.getRange(1, headers.length).setValue(key);
+      row.push(val);
+    }
+  }
+  sheet.insertRowBefore(2);
+  sheet.getRange(2, 1, 1, row.length).setValues([row]);
+  return ContentService.createTextOutput("Success");
+}`;
+
+      return (
+        <div className="min-h-screen bg-slate-50 pb-20 font-sans">
+          {toast.show && (
+            <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-lg text-white font-medium transition-opacity ${toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`}>
+              {toast.message}
+            </div>
+          )}
+
+          <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10">
+            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
+              <span className="text-indigo-500"><Icons.Wand2 /></span>
+              カードデータ登録ツール
+            </h1>
+            <button onClick={() => setShowSettings(true)} className="p-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors">
+              <Icons.Settings />
+            </button>
+          </header>
+
+          <main className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">1. 画像の選択と解析</h2>
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">カードID (必須・ファイル名になります)</label>
+                    <input type="text" name="id" value={formData.id} onChange={handleInputChange} placeholder="例: 103206" className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">アイコン画像</label>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors relative overflow-hidden">
+                      {iconImagePreview ? (
+                        <img src={iconImagePreview} alt="Icon Preview" className="absolute inset-0 w-full h-full object-contain p-2" />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-400">
+                          <Icons.Upload />
+                          <p className="text-sm text-slate-500 mt-2">アイコンを選択</p>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageChange(e, 'icon')} />
+                    </label>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">カード詳細画像 (ステータス解析用)</label>
+                    <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-slate-300 border-dashed rounded-xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors relative overflow-hidden">
+                      {mainImagePreview ? (
+                        <img src={mainImagePreview} alt="Main Preview" className="absolute inset-0 w-full h-full object-contain p-2" />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center pt-5 pb-6 text-slate-400">
+                          <Icons.Image />
+                          <p className="text-sm text-slate-500 mt-2"><span className="font-semibold">クリック</span> して画像を選択</p>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageChange(e, 'main')} />
+                    </label>
+                  </div>
+
+                  <button onClick={analyzeImage} disabled={isAnalyzing || !mainImage} className={`w-full py-3 rounded-xl flex items-center justify-center gap-2 font-bold text-white transition-all ${isAnalyzing ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-md'}`}>
+                    {isAnalyzing ? <span className="animate-pulse">Geminiが画像を解析中...</span> : <><Icons.Wand2 />画像からデータを自動入力</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
+                 <h2 className="text-lg font-bold text-slate-800 mb-4 border-b pb-2">2. データ確認・修正</h2>
+
+                 <div className="grid grid-cols-2 gap-4 mb-4">
+                   <div>
+                     <label className="block text-xs font-semibold text-slate-500 mb-1">名前</label>
+                     <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-semibold text-slate-500 mb-1">カテゴリ</label>
+                     <input type="text" name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-semibold text-slate-500 mb-1">ランク (数字)</label>
+                     <input type="number" name="rank" value={formData.rank} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-semibold text-slate-500 mb-1">レア度</label>
+                     <input type="text" name="rare" value={formData.rare} onChange={handleInputChange} className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                   </div>
+                 </div>
+
+                 <div className="space-y-4 mb-6">
+                   <div>
+                     <label className="block text-xs font-semibold text-slate-500 mb-1">特殊ステータス (カンマ区切り)</label>
+                     <input type="text" name="special_status" value={formData.special_status} onChange={handleInputChange} placeholder="例: ケーキパーティ" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-semibold text-slate-500 mb-1">特殊ステータス詳細</label>
+                     <input type="text" name="special_full_status" value={formData.special_full_status} onChange={handleInputChange} placeholder="例: ケーキパーティレベル+2" className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500" />
+                   </div>
+                 </div>
+
+                 <div className="mb-6">
+                   <div className="flex justify-between items-center mb-2">
+                     <label className="block text-xs font-semibold text-slate-500">通常ステータス (数値)</label>
+                     <button onClick={addStat} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 bg-indigo-50 px-2 py-1 rounded-md"><Icons.Plus /> 追加</button>
+                   </div>
+                   <div className="mb-3 text-[10px] text-slate-500 bg-slate-50 p-2 rounded border border-slate-100">
+                     <p className="font-semibold mb-1 text-slate-600">登録可能なステータス候補:</p>
+                     <div className="flex flex-wrap gap-1">
+                       {ALLOWED_STATS.map(stat => <span key={stat} className="bg-white px-1.5 py-0.5 rounded border border-slate-200">{stat}</span>)}
+                     </div>
+                   </div>
+                   <datalist id="status-options">
+                     {ALLOWED_STATS.map(stat => <option key={stat} value={stat} />)}
+                   </datalist>
+                   <div className="space-y-2">
+                     {formData.stats.length === 0 && <p className="text-sm text-slate-400 italic">ステータスはありません</p>}
+                     {formData.stats.map((stat) => (
+                       <div key={stat.id} className="flex gap-2 items-center">
+                         <input type="text" list="status-options" value={stat.name} onChange={(e) => updateStat(stat.id, 'name', e.target.value)} placeholder="項目 (例: 攻撃%)" className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
+                         <input type="text" value={stat.value} onChange={(e) => updateStat(stat.id, 'value', e.target.value)} placeholder="値 (例: 15)" className="w-24 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm" />
+                         <button onClick={() => removeStat(stat.id)} className="p-2 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-lg"><Icons.Trash2 /></button>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+
+                 <button onClick={handleSubmit} disabled={isSubmitting} className={`w-full py-4 rounded-xl flex items-center justify-center gap-2 font-bold text-white transition-all text-lg ${isSubmitting ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 shadow-md'}`}>
+                   {isSubmitting ? '登録処理中...' : <><Icons.Save /> GitHub & スプシに登録</>}
+                 </button>
+              </div>
+            </div>
+          </main>
+
+          {showSettings && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white">
+                  <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><span className="text-slate-500"><Icons.Settings /></span> 環境設定</h2>
+                  <button onClick={() => setShowSettings(false)} className="text-slate-400"><Icons.X /></button>
+                </div>
+                
+                <div className="p-6 space-y-5">
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">GitHub Personal Access Token (PAT)</label>
+                    <input type="password" name="githubToken" value={settings.githubToken} onChange={handleSettingChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50" placeholder="ghp_xxxxxxxxxxxx" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">GitHub Repository</label>
+                    <input type="text" name="githubRepo" value={settings.githubRepo} onChange={handleSettingChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50" placeholder="username/repository-name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">Gemini API Key</label>
+                    <input type="password" name="geminiKey" value={settings.geminiKey} onChange={handleSettingChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50" placeholder="AIzaSy..." />
+                  </div>
+                  <div className="pt-4 border-t border-slate-100">
+                    <label className="block text-sm font-semibold text-slate-700 mb-1">GAS Webアプリ URL</label>
+                    <input type="text" name="gasUrl" value={settings.gasUrl} onChange={handleSettingChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50" placeholder="https://script.google.com/..." />
+                  </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-2xl">
+                  <button onClick={saveSettings} className="w-full py-3 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl">
+                    設定を保存して閉じる
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
