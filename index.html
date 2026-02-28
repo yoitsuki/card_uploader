@@ -151,7 +151,7 @@
 - 特殊効果欄に「攻撃+15」「攻撃+24」のように同じステータスが複数ある場合は、それらの数値を合計して {"name": "攻撃%", "value": "39"} のようにひとまとめにしてください。
 - ステータス名は必ず以下のリストから最も意味が近いものを一言一句違わず選択してください。リストにない独自のステータス名は使用しないでください。
   [${ALLOWED_STATS.join(', ')}]
-- ※画像で「攻撃」となっている場合は「攻撃%」、「防御」は「防御%」、「HP」は「HP%」とするなど、適宜リスト内の名前に補正してください。
+- ※画像上の「攻撃」「防御」「HP」のステータスについて、数値に「%」がついているもの（例：攻撃+5%）だけを抽出し、名前を「攻撃%」「防御%」「HP%」として出力してください。数値に「%」がついていない実数値（例：攻撃+340、HP+1500など）のステータスは完全に無視し、出力に一切含めないでください。
 - ※「対ファイ/ウィ/スカ/プリ/サモ/剣豪/プレ与ダメ増」は「対○○与ダメ増」とし、「対ファイ/ウィ/スカ/プリ/サモ/剣豪/プレ被ダメ減」は「対○○被ダメ減」としてください。`;
 
           let res;
@@ -306,6 +306,7 @@
       const handleInputChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
       const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast('コピーしました'); };
 
+      // ここに表示されるGASのコードを「2行目に挿入する」処理にアップデートしています！
       const gasScriptText = `function doPost(e) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var data = JSON.parse(e.postData.contents);
@@ -324,8 +325,11 @@
       row.push(val);
     }
   }
+  
+  // ★ 上から2行目に空の行を挿入し、そこにデータを追加する
   sheet.insertRowBefore(2);
   sheet.getRange(2, 1, 1, row.length).setValues([row]);
+  
   return ContentService.createTextOutput("Success");
 }`;
 
@@ -485,6 +489,24 @@
                   <div className="pt-4 border-t border-slate-100">
                     <label className="block text-sm font-semibold text-slate-700 mb-1">GAS Webアプリ URL</label>
                     <input type="text" name="gasUrl" value={settings.gasUrl} onChange={handleSettingChange} className="w-full px-3 py-2 border border-slate-300 rounded-lg bg-slate-50" placeholder="https://script.google.com/..." />
+                    
+                    <div className="mt-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
+                      <h4 className="text-sm font-bold text-blue-800 mb-2">💡 スプシ連携（GAS）の更新</h4>
+                      <ol className="text-xs text-blue-700 space-y-1 ml-4 list-decimal">
+                        <li>対象のスプレッドシートのメニューから「拡張機能」＞「Apps Script」を開く</li>
+                        <li>以下のコードを<strong>上書きして保存する（※2行目追加版）</strong></li>
+                        <li>右上の「デプロイ」＞「新しいデプロイ」で「ウェブアプリ」として更新する</li>
+                      </ol>
+                      <div className="mt-3 relative">
+                        <pre className="text-[10px] bg-slate-800 text-slate-200 p-3 rounded-lg overflow-x-auto">
+                          {gasScriptText}
+                        </pre>
+                        <button onClick={() => copyToClipboard(gasScriptText)} className="absolute top-2 right-2 p-1.5 bg-slate-700 text-white hover:bg-slate-600 rounded-md">
+                          <Icons.Copy />
+                        </button>
+                      </div>
+                    </div>
+
                   </div>
                 </div>
 
