@@ -74,9 +74,8 @@
         const savedSettings = localStorage.getItem('cardUploaderSettings');
         if (savedSettings) {
           setSettings(JSON.parse(savedSettings));
-        } else {
-          setShowSettings(true); 
         }
+        // else { setShowSettings(true); } を削除して初回自動オープンを無効化
       }, []);
 
       const showToast = (message, type = 'success') => {
