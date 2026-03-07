@@ -4,10 +4,64 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>カードデータ登録ツール</title>
-  
-  <!-- ホーム画面追加用アイコン (カードとアップロード矢印のオリジナルSVG) -->
-  <link rel="apple-touch-icon" sizes="180x180" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgZmlsbD0iI2ZmZmZmZiIvPjxyZWN0IHg9IjQwIiB5PSIzMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMjAiIHJ4PSIxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNjM2NmYxIiBzdHJva2Utd2lkdGg9IjEyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNOTAgMTEwIEw5MCA3MCBNNjUgOTUgTDkwIDcwIEwxMTUgOTUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzYzNjZmMSIgc3Ryb2tlLXdpZHRoPSIxMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+">
-  <link rel="icon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxODAgMTgwIj48cmVjdCB3aWR0aD0iMTgwIiBoZWlnaHQ9IjE4MCIgZmlsbD0iI2ZmZmZmZiIvPjxyZWN0IHg9IjQwIiB5PSIzMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMjAiIHJ4PSIxNiIgZmlsbD0ibm9uZSIgc3Ryb2tlPSIjNjM2NmYxIiBzdHJva2Utd2lkdGg9IjEyIiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiLz48cGF0aCBkPSJNOTAgMTEwIEw5MCA3MCBNNjUgOTUgTDkwIDcwIEwxMTUgOTUiIGZpbGw9Im5vbmUiIHN0cm9rZT0iIzYzNjZmMSIgc3Ryb2tlLXdpZHRoPSIxMiIgc3Ryb2tlLWxpbmVjYXA9InJvdW5kIiBzdHJva2UtbGluZWpvaW49InJvdW5kIi8+PC9zdmc+">
+
+  <!-- アイコン動的生成スクリプト (スマホのホーム画面追加用) -->
+  <script>
+    (function() {
+      window.onload = function() {
+        var canvas = document.createElement('canvas');
+        canvas.width = 180;
+        canvas.height = 180;
+        var ctx = canvas.getContext('2d');
+        
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 180, 180);
+        
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 12;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // カードの角丸枠
+        var x = 40, y = 30, w = 100, h = 120, r = 16;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+        ctx.stroke();
+        
+        // アップロードの矢印
+        ctx.beginPath();
+        ctx.moveTo(90, 110);
+        ctx.lineTo(90, 70);
+        ctx.moveTo(65, 95);
+        ctx.lineTo(90, 70);
+        ctx.lineTo(115, 95);
+        ctx.stroke();
+        
+        var dataUrl = canvas.toDataURL('image/png');
+        
+        var linkApple = document.createElement('link');
+        linkApple.rel = 'apple-touch-icon';
+        linkApple.sizes = '180x180';
+        linkApple.href = dataUrl;
+        document.head.appendChild(linkApple);
+        
+        var linkFavicon = document.createElement('link');
+        linkFavicon.rel = 'icon';
+        linkFavicon.type = 'image/png';
+        linkFavicon.href = dataUrl;
+        document.head.appendChild(linkFavicon);
+      };
+    })();
+  </script>
 
   <!-- React & ReactDOM -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
@@ -38,7 +92,9 @@
       Save: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
       X: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
       Copy: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>,
-      ZoomIn: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>
+      ZoomIn: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>,
+      Eye: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+      EyeOff: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg>
     };
 
     const ALLOWED_STATS = [
@@ -53,6 +109,7 @@
     function App() {
       const [showSettings, setShowSettings] = useState(false);
       const [settings, setSettings] = useState({ githubToken: '', githubRepo: '', geminiKey: '', gasUrl: '' });
+      const [showSecrets, setShowSecrets] = useState(false); // パスワード表示トグル
 
       const [imageMode, setImageMode] = useState('single');
       const [mainImage, setMainImage] = useState(null);
@@ -196,8 +253,8 @@
   "rank": "ローマ数字のランクをアラビア数字で（例：VIなら6）",
   "rare": "レア度。枠の色や文字から推測（天、赤、金など）",
   "category": "カードの種類。画像に「〇〇カード」とあればその部分（武器、腕、防具、装飾、頭）",
-  "special_status": "スキル名や固有効果名など、純粋なステータス増加以外の効果（例：ケーキパーティ）。複数ある場合は「、」で区切る。なければ空文字",
-  "special_full_status": "固有効果の詳細説明などあれば。複数ある場合は「、」区切り",
+  "special_status": "カテゴリが「武器」なら「武器」、「腕」なら「腕」と出力してください。それ以外のカテゴリの場合は必ず空文字にしてください。スキル名などは含めないでください。",
+  "special_full_status": "武器や腕カード特有のスキル効果。画像内にカード名やスキル名と「+数字」の記載があればその通りに抽出してください（例：「ラズリ+5」「一文字斬+7」など）。ない場合は空文字",
   "stats": [
     {"name": "ステータス名", "value": "数値のみ（例:15）"}
   ]
@@ -278,6 +335,14 @@
         if (!mainImage || !iconImage) return showToast('メインとアイコン画像を選択してください', 'error');
         if (!settings?.githubToken || !settings?.githubRepo) { showToast('GitHubの設定を行ってください', 'error'); return setShowSettings(true); }
 
+        // ステータス名のバリデーション
+        const invalidStats = formData.stats.filter(s => s.name && !ALLOWED_STATS.includes(s.name));
+        if (invalidStats.length > 0) {
+          const invalidNames = invalidStats.map(s => s.name).join(', ');
+          showToast(`エラー: 許可されていないステータス名が含まれています (${invalidNames})`, 'error');
+          return;
+        }
+
         setIsSubmitting(true);
         try {
           const mainPath = `img/${formData.id}.jpg`;
@@ -336,7 +401,7 @@
       const updateStat = (id, f, v) => setFormData(p => ({ ...p, stats: p.stats.map(s => s.id === id ? { ...s, [f]: v } : s) }));
       const removeStat = (id) => setFormData(p => ({ ...p, stats: p.stats.filter(s => s.id !== id) }));
       const handleInputChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
-      const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast('コピーしました'); };
+      const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast(`「${text}」をコピーしました`); };
 
       const gasScriptText = `function doPost(e) {
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
@@ -400,12 +465,13 @@
           )}
 
           <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
-            <h1 className="text-xl font-bold text-slate-800 flex items-center gap-2">
-              <span className="text-indigo-500"><Icons.Wand2 /></span>
+            <h1 className="text-xl font-bold text-slate-800 flex items-baseline gap-2">
+              <span className="text-indigo-500 self-center"><Icons.Wand2 /></span>
               カードデータ登録ツール
+              <span className="text-sm font-medium text-slate-400 ml-2">v1.1.0</span>
             </h1>
             <div onClick={() => setShowSettings(true)} className="p-2 -mr-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors cursor-pointer relative z-20">
-              <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>
+              <Icons.Settings />
             </div>
           </header>
 
@@ -514,12 +580,12 @@
 
                  <div className="space-y-4 mb-6">
                    <div>
-                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">特殊ステータス (カンマ区切り)</label>
-                     <input type="text" name="special_status" value={formData.special_status} onChange={handleInputChange} placeholder="例: ケーキパーティ" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">特殊ステータス (武器・腕)</label>
+                     <input type="text" name="special_status" value={formData.special_status} onChange={handleInputChange} placeholder="例: 武器" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                    </div>
                    <div>
                      <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">特殊ステータス詳細</label>
-                     <input type="text" name="special_full_status" value={formData.special_full_status} onChange={handleInputChange} placeholder="例: ケーキパーティレベル+2" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                     <input type="text" name="special_full_status" value={formData.special_full_status} onChange={handleInputChange} placeholder="例: ラズリ+5" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
                    </div>
                  </div>
 
@@ -529,9 +595,11 @@
                      <button onClick={addStat} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 bg-indigo-50 px-3 py-1.5 rounded-lg font-bold transition-colors"><Icons.Plus /> 追加</button>
                    </div>
                    <div className="mb-4 text-[10px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
-                     <p className="font-bold mb-1.5 text-slate-700">登録可能なステータス候補:</p>
+                     <p className="font-bold mb-1.5 text-slate-700">登録可能なステータス候補 (タップでコピー):</p>
                      <div className="flex flex-wrap gap-1.5">
-                       {ALLOWED_STATS.map(stat => <span key={stat} className="bg-white px-2 py-1 rounded border border-slate-200 shadow-sm">{stat}</span>)}
+                       {ALLOWED_STATS.map(stat => (
+                         <span key={stat} onClick={() => copyToClipboard(stat)} className="bg-white px-2 py-1 rounded border border-slate-200 shadow-sm cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 transition-colors active:scale-95 select-none">{stat}</span>
+                       ))}
                      </div>
                    </div>
                    <datalist id="status-options">
@@ -568,36 +636,29 @@
                 <div className="p-6 space-y-6">
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">GitHub Personal Access Token (PAT)</label>
-                    <input type="password" name="githubToken" value={settings?.githubToken || ''} onChange={handleSettingChange} className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="ghp_xxxxxxxxxxxx" />
+                    <div className="relative">
+                      <input type={showSecrets ? "text" : "password"} name="githubToken" value={settings?.githubToken || ''} onChange={handleSettingChange} className="w-full pl-4 pr-12 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="ghp_xxxxxxxxxxxx" />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-indigo-500" onMouseDown={() => setShowSecrets(true)} onMouseUp={() => setShowSecrets(false)} onMouseLeave={() => setShowSecrets(false)} onTouchStart={() => setShowSecrets(true)} onTouchEnd={() => setShowSecrets(false)}>
+                        {showSecrets ? <Icons.EyeOff /> : <Icons.Eye />}
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">GitHub Repository</label>
-                    <input type="text" name="githubRepo" value={settings?.githubRepo || ''} onChange={handleSettingChange} className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="username/repository-name" />
+                    <input type="text" name="githubRepo" value={settings?.githubRepo || ''} onChange={handleSettingChange} className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="username/repository-name" />
                   </div>
                   <div>
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Gemini API Key</label>
-                    <input type="password" name="geminiKey" value={settings?.geminiKey || ''} onChange={handleSettingChange} className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="AIzaSy..." />
+                    <div className="relative">
+                      <input type={showSecrets ? "text" : "password"} name="geminiKey" value={settings?.geminiKey || ''} onChange={handleSettingChange} className="w-full pl-4 pr-12 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="AIzaSy..." />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-indigo-500" onMouseDown={() => setShowSecrets(true)} onMouseUp={() => setShowSecrets(false)} onMouseLeave={() => setShowSecrets(false)} onTouchStart={() => setShowSecrets(true)} onTouchEnd={() => setShowSecrets(false)}>
+                        {showSecrets ? <Icons.EyeOff /> : <Icons.Eye />}
+                      </div>
+                    </div>
                   </div>
                   <div className="pt-5 border-t border-slate-100">
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">GAS Webアプリ URL</label>
-                    <input type="text" name="gasUrl" value={settings?.gasUrl || ''} onChange={handleSettingChange} className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all" placeholder="https://script.google.com/..." />
-                    
-                    <div className="mt-4 bg-blue-50 p-4 rounded-xl border border-blue-100">
-                      <h4 className="text-sm font-bold text-blue-800 mb-2">💡 スプシ連携（GAS）の更新</h4>
-                      <ol className="text-xs text-blue-700 space-y-1 ml-4 list-decimal">
-                        <li>対象のスプレッドシートのメニューから「拡張機能」＞「Apps Script」を開く</li>
-                        <li>以下のコードを<strong>上書きして保存する（※2行目追加版）</strong></li>
-                        <li>右上の「デプロイ」＞「新しいデプロイ」で「ウェブアプリ」として更新する</li>
-                      </ol>
-                      <div className="mt-3 relative">
-                        <pre className="text-[10px] bg-slate-800 text-slate-200 p-3 rounded-lg overflow-x-auto">
-                          {gasScriptText}
-                        </pre>
-                        <button type="button" onClick={() => copyToClipboard(gasScriptText)} className="absolute top-2 right-2 p-1.5 bg-slate-700 text-white hover:bg-slate-600 rounded-md transition-colors">
-                          <Icons.Copy />
-                        </button>
-                      </div>
-                    </div>
+                    <input type="text" name="gasUrl" value={settings?.gasUrl || ''} onChange={handleSettingChange} className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="https://script.google.com/..." />
                   </div>
                 </div>
 
