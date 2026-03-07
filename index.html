@@ -468,7 +468,7 @@
             <h1 className="text-xl font-bold text-slate-800 flex items-baseline gap-2">
               <span className="text-indigo-500 self-center"><Icons.Wand2 /></span>
               カードデータ登録ツール
-              <span className="text-sm font-medium text-slate-400 ml-2">v1.1.0</span>
+              <span className="text-sm font-medium text-slate-400 ml-2">v1.1.1</span>
             </h1>
             <div onClick={() => setShowSettings(true)} className="p-2 -mr-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors cursor-pointer relative z-20">
               <Icons.Settings />
@@ -638,7 +638,7 @@
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">GitHub Personal Access Token (PAT)</label>
                     <div className="relative">
                       <input type={showSecrets ? "text" : "password"} name="githubToken" value={settings?.githubToken || ''} onChange={handleSettingChange} className="w-full pl-4 pr-12 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="ghp_xxxxxxxxxxxx" />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-indigo-500" onMouseDown={() => setShowSecrets(true)} onMouseUp={() => setShowSecrets(false)} onMouseLeave={() => setShowSecrets(false)} onTouchStart={() => setShowSecrets(true)} onTouchEnd={() => setShowSecrets(false)}>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-indigo-500" onClick={() => setShowSecrets(!showSecrets)}>
                         {showSecrets ? <Icons.EyeOff /> : <Icons.Eye />}
                       </div>
                     </div>
@@ -651,7 +651,7 @@
                     <label className="block text-sm font-bold text-slate-700 mb-1.5">Gemini API Key</label>
                     <div className="relative">
                       <input type={showSecrets ? "text" : "password"} name="geminiKey" value={settings?.geminiKey || ''} onChange={handleSettingChange} className="w-full pl-4 pr-12 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="AIzaSy..." />
-                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-indigo-500" onMouseDown={() => setShowSecrets(true)} onMouseUp={() => setShowSecrets(false)} onMouseLeave={() => setShowSecrets(false)} onTouchStart={() => setShowSecrets(true)} onTouchEnd={() => setShowSecrets(false)}>
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-indigo-500" onClick={() => setShowSecrets(!showSecrets)}>
                         {showSecrets ? <Icons.EyeOff /> : <Icons.Eye />}
                       </div>
                     </div>
