@@ -1,597 +1,681 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AshTale 火力スコアアナライザ</title>
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Lucide Icons -->
-    <script src="https://unpkg.com/lucide@latest"></script>
-    <!-- Tesseract.js for OCR -->
-    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
-    <!-- html2canvas for Screenshot -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
-    <style>
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: rgba(15, 23, 42, 0.5);
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background-color: rgba(30, 41, 59, 0.8);
-            border-radius: 3px;
-        }
-        body {
-            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>カードデータ登録ツール</title>
+
+  <!-- アイコン動的生成スクリプト (スマホのホーム画面追加用) -->
+  <script>
+    (function() {
+      window.onload = function() {
+        var canvas = document.createElement('canvas');
+        canvas.width = 180;
+        canvas.height = 180;
+        var ctx = canvas.getContext('2d');
         
-        #screenshot-container { display: none; }
-        .hide-on-screenshot { display: inherit; }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, 180, 180);
         
-        #input-memo-header {
-            resize: none;
-            overflow-y: hidden;
-            line-height: 1.5;
-            text-align: left;
-        }
+        ctx.strokeStyle = '#6366f1';
+        ctx.lineWidth = 12;
+        ctx.lineCap = 'round';
+        ctx.lineJoin = 'round';
+        
+        // カードの角丸枠
+        var x = 40, y = 30, w = 100, h = 120, r = 16;
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+        ctx.stroke();
+        
+        // アップロードの矢印
+        ctx.beginPath();
+        ctx.moveTo(90, 110);
+        ctx.lineTo(90, 70);
+        ctx.moveTo(65, 95);
+        ctx.lineTo(90, 70);
+        ctx.lineTo(115, 95);
+        ctx.stroke();
+        
+        var dataUrl = canvas.toDataURL('image/png');
+        
+        var linkApple = document.createElement('link');
+        linkApple.rel = 'apple-touch-icon';
+        linkApple.sizes = '180x180';
+        linkApple.href = dataUrl;
+        document.head.appendChild(linkApple);
+        
+        var linkFavicon = document.createElement('link');
+        linkFavicon.rel = 'icon';
+        linkFavicon.type = 'image/png';
+        linkFavicon.href = dataUrl;
+        document.head.appendChild(linkFavicon);
+      };
+    })();
+  </script>
 
-        .info-popup {
-            animation: fadeIn 0.15s ease-out;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(4px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
+  <!-- React & ReactDOM -->
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <!-- Babel -->
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
 
-        .ss-no-wrap {
-            white-space: nowrap !important;
-        }
-
-        /* ローディングアニメーション */
-        .loading-pulse {
-            animation: pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-        }
-        @keyframes pulse {
-            0%, 100% { opacity: 1; }
-            50% { opacity: .4; }
-        }
-    </style>
+  <style>
+    body { background-color: #f8fafc; }
+    #root { display: contents; }
+  </style>
 </head>
-<body class="bg-slate-950 text-slate-200 selection:bg-cyan-900 selection:text-cyan-50">
-    <div class="min-h-screen p-4 md:p-6" id="capture-area">
-        <div class="max-w-5xl mx-auto">
-            
-            <!-- ヘッダー -->
-            <header class="mb-6 border-b border-slate-800 pb-4" id="ui-header">
-                <div class="flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div class="text-center md:text-left w-full md:w-auto">
-                        <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500 flex items-center justify-center md:justify-start">
-                            <i data-lucide="flame" class="w-6 h-6 mr-3 text-cyan-400"></i>
-                            AshTale 火力スコアアナライザ
-                        </h1>
-                        <p class="text-slate-500 mt-1 text-[10px] uppercase tracking-widest font-bold opacity-70">
-                            Damage Score Reverse Calculation Tool
-                        </p>
-                    </div>
-                    
-                    <div class="flex flex-col items-center md:items-end gap-3 w-full md:w-auto">
-                        <div class="flex flex-row items-center justify-center md:justify-end gap-3 w-full">
-                            <div id="current-time" class="flex items-center text-[11px] text-cyan-500 font-mono bg-cyan-950/30 px-3 h-[34px] rounded-sm border border-cyan-900/40 shadow-inner">
-                                <i data-lucide="clock" class="w-3.5 h-3.5 mr-2 opacity-70"></i>
-                                <span id="time-display">--/--/-- --:--:--</span>
-                            </div>
-                            <button id="btn-screenshot" class="hide-on-screenshot flex items-center px-4 h-[34px] bg-slate-900 hover:bg-slate-800 border border-slate-700 text-cyan-400 hover:text-cyan-300 rounded-sm text-xs font-bold transition-all shadow-sm">
-                                <i data-lucide="camera" class="w-4 h-4 mr-2"></i>
-                                画面を保存
-                            </button>
-                        </div>
-                        <div class="w-full md:max-w-[320px]">
-                            <textarea id="input-memo-header" rows="1" placeholder="メモを入力（スクショに反映されます）" class="w-full bg-slate-950/30 border border-slate-800 hover:border-slate-700 rounded-sm px-3 py-1.5 text-[11px] text-slate-400 focus:outline-none focus:border-cyan-900/40 transition-all font-mono placeholder-slate-700 text-left"></textarea>
-                        </div>
-                    </div>
-                </div>
-            </header>
+<body>
+  <div id="root"></div>
 
-            <div class="grid grid-cols-1 lg:grid-cols-12 gap-4 md:gap-6">
-                
-                <!-- 左カラム -->
-                <div class="lg:col-span-5 flex flex-col gap-4">
-                    
-                    <!-- 参照画像 -->
-                    <div id="reference-image-section" class="hidden hide-on-screenshot bg-slate-900 border border-slate-800 rounded-sm p-4 shadow-md flex-col">
-                        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                            <h2 class="text-sm font-bold text-slate-300 flex items-center tracking-wide uppercase">
-                                <i data-lucide="image" class="w-4 h-4 mr-2 text-indigo-500"></i>
-                                参照画像
-                            </h2>
-                            <button id="btn-clear-images" class="flex items-center text-[10px] text-slate-500 hover:text-red-400 transition-colors bg-slate-950 px-2 py-1 rounded-sm border border-slate-800">
-                                <i data-lucide="x" class="w-3 h-3 mr-1"></i>CLEAR
-                            </button>
-                        </div>
-                        <div class="flex justify-center bg-black/60 rounded-sm overflow-auto max-h-[35vh] border border-slate-800">
-                            <img id="main-reference-img" src="" class="block object-contain max-w-full h-auto" style="display: none;" />
-                        </div>
-                        <div id="image-thumbnails" class="mt-3 flex gap-2 overflow-x-auto custom-scrollbar pb-1" style="display: none;"></div>
-                    </div>
+  <script type="text/babel">
+    const { useState, useEffect } = React;
 
-                    <!-- ステータス入力 -->
-                    <div class="bg-slate-900 border border-slate-800 rounded-sm p-4 shadow-md relative" id="ui-status">
-                        <div class="flex justify-between items-center mb-3 border-b border-slate-800 pb-2">
-                            <h2 class="text-sm font-bold text-slate-300 flex items-center">
-                                <i data-lucide="target" class="w-4 h-4 mr-2 text-blue-500"></i>
-                                現在のステータス
-                            </h2>
-                            <div class="hide-on-screenshot flex items-center gap-2">
-                                <!-- OCR解析ボタン (アイコンのみ) -->
-                                <button id="btn-ocr" class="flex items-center justify-center w-[34px] h-[34px] bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-sm cursor-pointer transition-colors text-cyan-400" title="画像を解析して数値を読み込む">
-                                    <i data-lucide="scan" class="w-4 h-4 text-cyan-400"></i>
-                                </button>
-                                <input type="file" id="image-upload" accept="image/*" multiple class="hidden">
-                                <label for="image-upload" class="flex items-center justify-center px-3 h-[34px] bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-sm text-[10px] font-bold cursor-pointer transition-colors text-slate-400">
-                                    <i data-lucide="image-plus" class="w-3.5 h-3.5 mr-1.5 text-indigo-500"></i>画像を見ながら入力
-                                </label>
-                            </div>
-                        </div>
+    const Icons = {
+      Settings: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{pointerEvents: 'none'}}><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+      Wand2: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"></path><path d="m14 7 3 3"></path><path d="M5 6v4"></path><path d="M19 14v4"></path><path d="M10 2v2"></path><path d="M7 8H3"></path><path d="M21 16h-4"></path><path d="M11 3H9"></path></svg>,
+      Upload: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" x2="12" y1="3" y2="15"></line></svg>,
+      Image: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"></rect><circle cx="9" cy="9" r="2"></circle><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"></path></svg>,
+      Plus: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>,
+      Trash2: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>,
+      Save: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>,
+      X: () => <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>,
+      Copy: () => <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>,
+      ZoomIn: () => <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><line x1="11" y1="8" x2="11" y2="14"></line><line x1="8" y1="11" x2="14" y2="11"></line></svg>,
+      Eye: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+      EyeOff: () => <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9.88 9.88a3 3 0 1 0 4.24 4.24"></path><path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68"></path><path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg>
+    };
 
-                        <!-- OCRプログレス -->
-                        <div id="ocr-status" class="hidden mb-3 p-2 bg-cyan-950/20 border border-cyan-900/50 rounded-sm text-[10px] text-cyan-400 font-mono loading-pulse">
-                            <i data-lucide="loader-2" class="w-3 h-3 mr-2 animate-spin inline"></i>
-                            <span id="ocr-status-text">画像を解析中...</span>
-                        </div>
+    const ALLOWED_STATS = [
+      "攻撃%", "会心率", "会心ダメージ", "防御無視", "ダメージ倍率",
+      "対ボス与ダメ増", "対高HP与ダメ増", "対低HP与ダメ増", "状態異常与ダメ増",
+      "命中率", "状態異常命中率", "防御%", "HP%", "ガード率", "回避率",
+      "会心率耐性", "会心ダメ耐性", "対高低HPダメ耐性", "対ボス被ダメ減",
+      "状態異常耐性", "状態異常ダメ耐性", "与治療効果", "被治療効果", "HP吸収率",
+      "対○○与ダメ増", "対○○被ダメ減"
+    ];
 
-                        <div class="grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-1">
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="sword" class="w-3.5 h-3.5 mr-2 text-cyan-600"></i><span>攻撃力</span></label>
-                                <input type="text" id="input-atk" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="eye" class="w-3.5 h-3.5 mr-2 text-cyan-600"></i><span>威圧</span></label>
-                                <input type="text" id="input-intimidation" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="zap" class="w-3.5 h-3.5 mr-2 text-cyan-600"></i><span>ダメージ倍率</span></label>
-                                <input type="text" id="input-dmgMul" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="arrow-up-circle" class="w-3.5 h-3.5 mr-2 text-cyan-600"></i><span>与ダメージ増加</span></label>
-                                <input type="text" id="input-dmgInc" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="crosshair" class="w-3.5 h-3.5 mr-2 text-cyan-600"></i><span>会心ダメージ</span></label>
-                                <input type="text" id="input-critDmg" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="shield-alert" class="w-3.5 h-3.5 mr-2 text-cyan-600"></i><span>防御無視</span></label>
-                                <input type="text" id="input-defIgn" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="skull" class="w-3.5 h-3.5 mr-2 text-cyan-600"></i><span>対ボス与ダメ増</span></label>
-                                <input type="text" id="input-bossDmg" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="zap" class="w-3.5 h-3.5 mr-2 text-cyan-700"></i><span>状態異常与ダメ増</span></label>
-                                <input type="text" id="input-statusDmg" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="target" class="w-3.5 h-3.5 mr-2 text-cyan-700"></i><span>対高HP与ダメ増</span></label>
-                                <input type="text" id="input-highHpDmg" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                            <div class="flex justify-between items-center py-1.5 px-1 border-b border-slate-800/50 hover:bg-slate-800/20 transition-colors">
-                                <label class="flex items-center text-xs font-medium text-slate-400"><i data-lucide="target" class="w-3.5 h-3.5 mr-2 text-cyan-700"></i><span>対低HP与ダメ増</span></label>
-                                <input type="text" id="input-lowHpDmg" class="w-28 sm:w-32 bg-slate-950 border border-slate-800 text-slate-100 text-right text-xs rounded-sm px-2 py-1 focus:outline-none focus:border-cyan-600 transition-all font-mono" />
-                            </div>
-                        </div>
-                    </div>
-                </div>
+    function App() {
+      const [showSettings, setShowSettings] = useState(false);
+      const [settings, setSettings] = useState({ githubToken: '', githubRepo: '', geminiKey: '', gasUrl: '' });
+      const [showSecrets, setShowSecrets] = useState(false); // パスワード表示トグル
 
-                <!-- 右カラム -->
-                <div class="lg:col-span-7 flex flex-col gap-4 h-full">
-                    <div class="bg-slate-900 border border-slate-800 rounded-sm p-4 md:p-5 shadow-md flex-1" id="ui-result">
-                        <div class="mb-4 flex items-center justify-between border-b border-slate-800 pb-2">
-                            <div class="flex items-center">
-                                <i data-lucide="arrow-up-circle" class="w-4 h-4 mr-2 text-cyan-500"></i>
-                                <h2 class="text-sm font-bold text-slate-300">火力1%UPに必要なステータス</h2>
-                            </div>
-                        </div>
-                        <div id="results-container" class="space-y-0"></div>
-                    </div>
-                </div>
+      const [imageMode, setImageMode] = useState('single');
+      const [mainImage, setMainImage] = useState(null);
+      const [mainImagePreview, setMainImagePreview] = useState('');
+      const [iconImage, setIconImage] = useState(null);
+      const [iconImagePreview, setIconImagePreview] = useState('');
+      
+      const [combineLeftFile, setCombineLeftFile] = useState(null);
+      const [combineLeftPreview, setCombineLeftPreview] = useState('');
+      const [combineRightFile, setCombineRightFile] = useState(null);
+      const [combineRightPreview, setCombineRightPreview] = useState('');
 
-            </div>
-            
-            <footer class="mt-8 pt-4 border-t border-slate-800/60 flex flex-col sm:flex-row justify-between items-center text-[10px] text-slate-600 font-mono tracking-tighter">
-                <div>&copy; 2026 AshTale Score Analyzer</div>
-                <div class="text-cyan-900">Version 0.1.25</div>
-            </footer>
-        </div>
-    </div>
+      const [formData, setFormData] = useState({
+        id: '', name: '', rank: '', rare: '', category: '', special_status: '', special_full_status: '', stats: []
+      });
 
-    <!-- スクショ用一時レイアウト -->
-    <div id="screenshot-temp-wrapper" style="position: absolute; left: -9999px; top: -9999px; background-color: #020617;">
-        <div id="screenshot-layout-root" class="bg-slate-950 text-slate-200 p-5 flex items-end gap-3" style="width: 450px;">
-            <div id="ss-left-col" class="flex-1 flex flex-col gap-3"></div>
-            <div id="ss-right-col" class="flex-1"></div>
-        </div>
-    </div>
+      const [isAnalyzing, setIsAnalyzing] = useState(false);
+      const [isSubmitting, setIsSubmitting] = useState(false);
+      const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+      
+      const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, message: '', onConfirm: null, onCancel: null });
+      const [previewModalOpen, setPreviewModalOpen] = useState(false);
 
-    <!-- 保存用モーダル -->
-    <div id="screenshot-modal" class="hidden fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-950/95 backdrop-blur-sm p-4">
-        <div class="bg-slate-900 border border-slate-800 p-4 rounded-sm shadow-2xl max-w-full max-h-full flex flex-col">
-            <div class="flex justify-between items-center mb-4">
-                <p class="text-xs text-cyan-600 font-bold flex items-center">
-                    <i data-lucide="download" class="w-3.5 h-3.5 mr-2"></i>画像を長押しして保存
-                </p>
-                <button id="btn-close-modal" class="text-slate-500 hover:text-white transition-colors bg-slate-800 p-1.5 rounded-full">
-                    <i data-lucide="x" class="w-4 h-4"></i>
-                </button>
-            </div>
-            <div class="overflow-auto bg-black flex-1 border border-slate-800 rounded-sm">
-                <img id="screenshot-image" src="" alt="Screenshot" class="max-w-full h-auto object-contain mx-auto block" />
-            </div>
-        </div>
-    </div>
-
-    <script>
-        lucide.createIcons();
-
-        const state = {
-            stats: {
-                atk: '', intimidation: '', dmgMul: '', dmgInc: '', critDmg: '', 
-                defIgn: '', bossDmg: '', statusDmg: '', 
-                highHpDmg: '', lowHpDmg: ''
+      useEffect(() => {
+        try {
+          const savedSettings = localStorage.getItem('cardUploaderSettings');
+          if (savedSettings) {
+            const parsed = JSON.parse(savedSettings);
+            if (parsed && typeof parsed === 'object') {
+              setSettings(prev => ({ ...prev, ...parsed }));
             }
-        };
-
-        const inputs = {
-            atk: document.getElementById('input-atk'),
-            intimidation: document.getElementById('input-intimidation'),
-            dmgMul: document.getElementById('input-dmgMul'),
-            dmgInc: document.getElementById('input-dmgInc'),
-            critDmg: document.getElementById('input-critDmg'),
-            defIgn: document.getElementById('input-defIgn'),
-            bossDmg: document.getElementById('input-bossDmg'),
-            statusDmg: document.getElementById('input-statusDmg'),
-            highHpDmg: document.getElementById('input-highHpDmg'),
-            lowHpDmg: document.getElementById('input-lowHpDmg'),
-        };
-
-        const memoInputHeader = document.getElementById('input-memo-header');
-        const resultsContainer = document.getElementById('results-container');
-        const timeDisplay = document.getElementById('time-display');
-        const btnScreenshot = document.getElementById('btn-screenshot');
-        const btnOcr = document.getElementById('btn-ocr');
-        const ocrStatus = document.getElementById('ocr-status');
-        const ocrStatusText = document.getElementById('ocr-status-text');
-        const screenshotModal = document.getElementById('screenshot-modal');
-        const screenshotImage = document.getElementById('screenshot-image');
-        const btnCloseModal = document.getElementById('btn-close-modal');
-        const fileInput = document.getElementById('image-upload');
-        const refImageSection = document.getElementById('reference-image-section');
-        const mainReferenceImg = document.getElementById('main-reference-img');
-        const imageThumbnails = document.getElementById('image-thumbnails');
-        const btnClearImages = document.getElementById('btn-clear-images');
-        let loadedImages = [];
-        let selectedImgIndex = 0;
-
-        function updateTime() {
-            const now = new Date();
-            timeDisplay.textContent = now.toLocaleString('ja-JP', { 
-                year: 'numeric', month: '2-digit', day: '2-digit', 
-                hour: '2-digit', minute: '2-digit', second: '2-digit' 
-            });
+          }
+        } catch (e) {
+          console.error('設定の読み込みに失敗しました', e);
         }
-        setInterval(updateTime, 1000);
-        updateTime();
+      }, []);
 
-        function adjustMemoHeight() {
-            memoInputHeader.style.height = 'auto';
-            memoInputHeader.style.height = (memoInputHeader.scrollHeight) + 'px';
-        }
-        memoInputHeader.addEventListener('input', adjustMemoHeight);
-
-        function createResultRow(label, value, key, unit = '', isScreenshot = false) {
-            const displayUnit = (value !== '---' && value !== 0) ? unit : '';
-            let infoBtnHtml = '';
-            if (!isScreenshot) {
-                if (key === 'highHpDmg' || key === 'lowHpDmg') {
-                    infoBtnHtml = `<div class="relative group ml-1.5 inline-block"><i data-lucide="info" class="w-3 h-3 text-slate-600 cursor-help"></i><div class="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-48 p-2 bg-slate-800 text-[10px] text-slate-200 rounded shadow-lg border border-slate-700 info-popup">稼働率を50%と仮定し、計算しています。</div></div>`;
-                } else if (key === 'defIgn') {
-                    infoBtnHtml = `<div class="relative group ml-1.5 inline-block"><i data-lucide="info" class="w-3 h-3 text-slate-600 cursor-help"></i><div class="absolute left-0 bottom-full mb-2 hidden group-hover:block z-50 w-48 p-2 bg-slate-800 text-[10px] text-slate-200 rounded shadow-lg border border-slate-700 info-popup">敵防御力や上限に依存するため、計算対象外（---）としています。</div></div>`;
-                }
-            }
-            const rowClass = isScreenshot ? "flex justify-between items-center py-1 px-1 border-b border-slate-800/40" : "flex justify-between items-center py-2 px-2 border-b border-slate-800/40 hover:bg-slate-800/10 transition-colors";
-            const labelClass = isScreenshot ? "text-[8px] text-slate-400 ss-no-wrap" : "text-xs text-slate-400";
-            const valClass = isScreenshot ? "text-[9px] font-mono font-bold text-slate-100" : "text-sm font-mono font-bold text-slate-100";
-            return `<div class="${rowClass}"><div class="flex items-center"><span class="${labelClass}">${label}</span>${infoBtnHtml}</div><div class="flex items-center"><span class="${valClass}">${value}${displayUnit}</span></div></div>`;
-        }
-
-        function calculateAndRender() {
-            const v = {
-                atk: parseFloat(state.stats.atk) || 0,
-                dmgMul: parseFloat(state.stats.dmgMul) || 0,
-                dmgInc: parseFloat(state.stats.dmgInc) || 0,
-                critDmg: parseFloat(state.stats.critDmg) || 0,
-                bossDmg: parseFloat(state.stats.bossDmg) || 0,
-                statusDmg: parseFloat(state.stats.statusDmg) || 0,
-                highHpDmg: parseFloat(state.stats.highHpDmg) || 0,
-                lowHpDmg: parseFloat(state.stats.lowHpDmg) || 0,
-                intimidation: parseFloat(state.stats.intimidation) || 0,
+      useEffect(() => {
+        if (imageMode === 'combine' && combineLeftFile && combineRightFile) {
+          const url1 = URL.createObjectURL(combineLeftFile);
+          const url2 = URL.createObjectURL(combineRightFile);
+          const img1 = new Image();
+          const img2 = new Image();
+          img1.onload = () => {
+            img2.onload = () => {
+              const canvas = document.createElement('canvas');
+              canvas.width = img1.width + img2.width;
+              canvas.height = Math.max(img1.height, img2.height);
+              const ctx = canvas.getContext('2d');
+              
+              ctx.fillStyle = '#473939';
+              ctx.fillRect(0, 0, canvas.width, canvas.height);
+              
+              ctx.drawImage(img1, 0, 0);
+              ctx.drawImage(img2, img1.width, 0);
+              
+              // 圧縮率 1.0 (劣化なしの最高画質) に変更
+              canvas.toBlob((blob) => {
+                const combinedFile = new File([blob], "combined.jpg", { type: "image/jpeg" });
+                setMainImage(combinedFile);
+                setMainImagePreview(URL.createObjectURL(combinedFile));
+              }, 'image/jpeg', 1.0);
             };
-            const shlSum = v.statusDmg + v.highHpDmg + v.lowHpDmg;
-            const isAnyInput = Object.values(state.stats).some(val => val !== '');
-            const p = {
-                atk: v.atk * 0.01,
-                intimidation: isAnyInput ? (10 + (v.intimidation * 0.01)) : 0,
-                dmgMul: v.dmgMul, 
-                dmgInc: v.dmgInc * 0.01,
-                critDmg: v.critDmg * 0.01,
-                bossDmg: v.bossDmg * 0.01,
-                statusDmg: shlSum * 0.01,
-                highHpDmg: shlSum * 0.02, 
-                lowHpDmg: shlSum * 0.02,  
-                defIgn: '---'
-            };
-            Object.keys(p).forEach(key => {
-                if (typeof p[key] === 'number') p[key] = p[key] > 0 ? p[key].toFixed(2) : 0;
-            });
-            resultsContainer.innerHTML = `
-                <div class="flex justify-between px-2 pb-1 text-[10px] font-bold text-slate-600 border-b border-slate-800/30 uppercase tracking-tighter"><span>Stat Name</span><span>Required Amount</span></div>
-                ${createResultRow('攻撃力', p.atk, 'atk')}
-                ${createResultRow('威圧', p.intimidation, 'intimidation')}
-                ${createResultRow('ダメージ倍率', p.dmgMul, 'dmgMul', '%')}
-                ${createResultRow('与ダメージ増加', p.dmgInc, 'dmgInc', '%')}
-                ${createResultRow('会心ダメージ', p.critDmg, 'critDmg', '%')}
-                ${createResultRow('対ボス与ダメ増', p.bossDmg, 'bossDmg', '%')}
-                ${createResultRow('状態異常与ダメ増', p.statusDmg, 'statusDmg', '%')}
-                ${createResultRow('対高HP与ダメ増', p.highHpDmg, 'highHpDmg', '%')}
-                ${createResultRow('対低HP与ダメ増', p.lowHpDmg, 'lowHpDmg', '%')}
-                ${createResultRow('防御無視', p.defIgn, 'defIgn')}
-            `;
-            lucide.createIcons();
-            state.calculatedPoints = p;
+            img2.src = url2;
+          };
+          img1.src = url1;
         }
+      }, [combineLeftFile, combineRightFile, imageMode]);
 
-        Object.keys(inputs).forEach(key => {
-            inputs[key].addEventListener('input', (e) => {
-                const val = e.target.value;
-                if (val === '' || /^\d*\.?\d*$/.test(val)) {
-                    state.stats[key] = val;
-                    calculateAndRender();
-                } else {
-                    e.target.value = state.stats[key];
-                }
-            });
+      const showToast = (message, type = 'success') => {
+        setToast({ show: true, message, type });
+        setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+      };
+
+      const confirmOverwrite = (message) => {
+        return new Promise((resolve) => {
+          setConfirmDialog({
+            isOpen: true,
+            message,
+            onConfirm: () => { setConfirmDialog(p => ({...p, isOpen: false})); resolve(true); },
+            onCancel: () => { setConfirmDialog(p => ({...p, isOpen: false})); resolve(false); }
+          });
         });
+      };
 
-        fileInput.addEventListener('change', (e) => {
-            const files = Array.from(e.target.files);
-            if (files.length === 0) return;
-            refImageSection.classList.remove('hidden');
-            files.forEach(file => {
-                const reader = new FileReader();
-                reader.onload = (event) => {
-                    const dataUrl = event.target.result;
-                    loadedImages.push(dataUrl);
-                    renderThumbnails();
-                    if (loadedImages.length === 1) setMainImage(0);
-                };
-                reader.readAsDataURL(file);
-            });
-            fileInput.value = '';
-        });
+      const handleModeChange = (mode) => {
+        setImageMode(mode);
+        setMainImage(null); setMainImagePreview('');
+        setCombineLeftFile(null); setCombineLeftPreview('');
+        setCombineRightFile(null); setCombineRightPreview('');
+      };
 
-        function renderThumbnails() {
-            imageThumbnails.innerHTML = '';
-            if (loadedImages.length <= 1) {
-                imageThumbnails.style.display = 'none';
-            } else {
-                imageThumbnails.style.display = 'flex';
-                loadedImages.forEach((dataUrl, index) => {
-                    const img = document.createElement('img');
-                    img.src = dataUrl;
-                    const isSelected = index === selectedImgIndex;
-                    img.className = `w-12 h-12 object-cover border-2 rounded-sm cursor-pointer transition-all flex-shrink-0 ${isSelected ? 'border-cyan-500 opacity-100' : 'border-transparent opacity-50 hover:opacity-100'}`;
-                    img.onclick = () => setMainImage(index);
-                    imageThumbnails.appendChild(img);
-                });
-            }
+      const handleImageChange = (e, type) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const previewUrl = URL.createObjectURL(file);
+        if (type === 'main') {
+          setMainImage(file);
+          setMainImagePreview(previewUrl);
+        } else {
+          setIconImage(file);
+          setIconImagePreview(previewUrl);
+        }
+      };
+
+      const handleCombineChange = (e, side) => {
+        const file = e.target.files[0];
+        if (!file) return;
+        if (side === 'left') {
+          setCombineLeftFile(file);
+          setCombineLeftPreview(URL.createObjectURL(file));
+        } else {
+          setCombineRightFile(file);
+          setCombineRightPreview(URL.createObjectURL(file));
+        }
+      };
+
+      const toBase64 = file => new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = () => resolve(reader.result.split(',')[1]);
+        reader.onerror = error => reject(error);
+      });
+
+      const analyzeImage = async () => {
+        if (!mainImage) return showToast('カード詳細画像が選択または結合されていません', 'error');
+        const apiKey = settings?.geminiKey || "";
+        if(!apiKey) {
+            showToast('Gemini API Keyが設定されていません', 'error');
+            setShowSettings(true); return;
         }
 
-        function setMainImage(index) {
-            selectedImgIndex = index;
-            const dataUrl = loadedImages[index];
-            mainReferenceImg.src = dataUrl;
-            mainReferenceImg.style.display = 'block';
-            renderThumbnails();
-        }
+        setIsAnalyzing(true);
+        try {
+          const base64Data = await toBase64(mainImage);
+          const prompt = `あなたはゲーム「アッシュテイル（Ash Tale）」のデータアシスタントです。
+アップロードされたカードのステータス画面を解析し、以下の情報をJSON形式で抽出してください。
 
-        btnClearImages.addEventListener('click', () => {
-            loadedImages = [];
-            selectedImgIndex = 0;
-            mainReferenceImg.src = '';
-            mainReferenceImg.style.display = 'none';
-            refImageSection.classList.add('hidden');
-            imageThumbnails.innerHTML = '';
-        });
+{
+  "name": "カードの名前",
+  "rank": "ローマ数字のランクをアラビア数字で（例：VIなら6）",
+  "rare": "レア度。枠の色や文字から推測（天、赤、金など）",
+  "category": "カードの種類。画像に「〇〇カード」とあればその部分（武器、腕、防具、装飾、頭）",
+  "special_status": "カテゴリが「武器」なら「武器」、「腕」なら「腕」と出力してください。それ以外のカテゴリの場合は必ず空文字にしてください。スキル名などは含めないでください。",
+  "special_full_status": "武器や腕カード特有のスキル効果。画像内にカード名やスキル名と「+数字」の記載があればその通りに抽出してください（例：「ラズリ+5」「一文字斬+7」など）。ない場合は空文字",
+  "stats": [
+    {"name": "ステータス名", "value": "数値のみ（例:15）"}
+  ]
+}
 
-        // OCR解析ロジック
-        async function preprocessImageForOCR(imgElement) {
-            const canvas = document.createElement('canvas');
-            const ctx = canvas.getContext('2d');
-            canvas.width = imgElement.naturalWidth;
-            canvas.height = imgElement.naturalHeight;
-            ctx.drawImage(imgElement, 0, 0);
-            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
-            const data = imageData.data;
-            for (let i = 0; i < data.length; i += 4) {
-                const avg = (data[i] + data[i+1] + data[i+2]) / 3;
-                const v = avg < 140 ? 0 : 255;
-                data[i] = data[i+1] = data[i+2] = v;
-            }
-            ctx.putImageData(imageData, 0, 0);
-            return canvas.toDataURL('image/png');
-        }
+【重要ルール】
+- JSON以外のテキストは一切出力しないでください。
+- 特殊効果欄に「攻撃+15」「攻撃+24」のように同じステータスが複数ある場合は、それらの数値を合計して {"name": "攻撃%", "value": "39"} のようにひとまとめにしてください。
+- ステータス名は必ず以下のリストから最も意味が近いものを選択してください。
+  [${ALLOWED_STATS.join(', ')}]
+- ※画像上の「攻撃」「防御」「HP」のステータスについて、数値に「%」がついているもの（例：攻撃+5%）だけを抽出し、名前を「攻撃%」「防御%」「HP%」として出力してください。数値に「%」がついていない実数値（例：攻撃+340、HP+1500など）のステータスは完全に無視し、出力に一切含めないでください。
+- ※「対ファイ/ウィ/スカ/プリ/サモ/剣豪/プレ与ダメ増」は「対○○与ダメ増」とし、「対ファイ/ウィ/スカ/プリ/サモ/剣豪/プレ被ダメ減」は「対○○被ダメ減」としてください。`;
 
-        async function runOCR() {
-            if (!loadedImages.length) return;
-            ocrStatus.classList.remove('hidden');
-            ocrStatusText.textContent = "OCRエンジン準備中...";
+          let res;
+          let delay = 1000;
+          for (let i = 0; i < 5; i++) {
             try {
-                const processedData = await preprocessImageForOCR(mainReferenceImg);
-                const worker = await Tesseract.createWorker('jpn+eng');
-                ocrStatusText.textContent = "テキスト解析中...";
-                const { data: { text } } = await worker.recognize(processedData);
-                await worker.terminate();
-                ocrStatusText.textContent = "データ抽出中...";
-                const lines = text.split('\n');
-                const newStats = { ...state.stats };
-                lines.forEach(line => {
-                    const cleanLine = line.replace(/,/g, '').replace(/[oOＯｏ]/g, '0').replace(/[lIｌＩ]/g, '1');
-                    const nums = cleanLine.match(/\d+(\.\d+)?/g);
-                    if (!nums) return;
-                    const val = nums[nums.length - 1];
-                    if (line.includes('攻撃')) newStats.atk = val;
-                    else if (line.includes('威圧')) newStats.intimidation = val;
-                    else if (line.includes('倍率')) newStats.dmgMul = val;
-                    else if (line.includes('与ダメージ')) newStats.dmgInc = val;
-                    else if (line.includes('会心')) newStats.critDmg = val;
-                    else if (line.includes('無視')) newStats.defIgn = val;
-                    else if (line.includes('対ボス')) newStats.bossDmg = val;
-                    else if (line.includes('状態異常')) newStats.statusDmg = val;
-                    else if (line.includes('対高HP')) newStats.highHpDmg = val;
-                    else if (line.includes('対低HP')) newStats.lowHpDmg = val;
-                });
-                Object.keys(newStats).forEach(key => { if (newStats[key]) state.stats[key] = newStats[key]; });
-                calculateAndRender();
-                ocrStatusText.textContent = "解析完了！";
-                setTimeout(() => ocrStatus.classList.add('hidden'), 3000);
-            } catch (err) {
-                console.error(err);
-                ocrStatusText.textContent = "解析に失敗しました。";
-                setTimeout(() => ocrStatus.classList.add('hidden'), 3000);
-            }
+              res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  contents: [{ role: "user", parts: [{ text: prompt }, { inlineData: { mimeType: "image/jpeg", data: base64Data } }] }],
+                  generationConfig: { responseMimeType: "application/json" }
+                })
+              });
+              if (res.ok) break;
+              if (i === 4) throw new Error(`APIレスポンスエラー: ${res.status}`);
+            } catch (e) { if (i === 4) throw e; }
+            await new Promise(r => setTimeout(r, delay)); delay *= 2;
+          }
+          
+          const data = await res.json();
+          const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!text) throw new Error("解析結果が空でした");
+          
+          const result = JSON.parse(text);
+          const mappedStats = (result.stats || []).map((s, i) => ({ id: Date.now() + i, name: s.name, value: s.value }));
+
+          setFormData(prev => ({
+            ...prev,
+            name: result.name || '', rank: result.rank || '', rare: result.rare || '', category: result.category || '',
+            special_status: result.special_status || '', special_full_status: result.special_full_status || '',
+            stats: mappedStats
+          }));
+          showToast('画像の解析が完了しました');
+        } catch (err) {
+          console.error(err); showToast('画像の読み取りに失敗しました。', 'error');
+        } finally { setIsAnalyzing(false); }
+      };
+
+      const checkFileExists = async (path) => {
+        const url = `https://api.github.com/repos/${settings?.githubRepo}/contents/${path}`;
+        try {
+          const res = await fetch(url, { headers: { 'Authorization': `Bearer ${settings?.githubToken}` } });
+          if (res.ok) {
+            const data = await res.json();
+            return data.sha;
+          }
+        } catch (e) {}
+        return null;
+      };
+
+      const uploadToGitHub = async (path, base64Content, message, sha) => {
+        const url = `https://api.github.com/repos/${settings?.githubRepo}/contents/${path}`;
+        const body = { message, content: base64Content };
+        if (sha) body.sha = sha;
+
+        const putRes = await fetch(url, {
+          method: 'PUT',
+          headers: { 'Authorization': `Bearer ${settings?.githubToken}`, 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        if (!putRes.ok) throw new Error(`GitHub Upload Failed: ${path}`);
+      };
+
+      const handleSubmit = async () => {
+        if (!formData.id) return showToast('画像に付けるIDを入力してください', 'error');
+        if (!mainImage || !iconImage) return showToast('メインとアイコン画像を選択してください', 'error');
+        if (!settings?.githubToken || !settings?.githubRepo) { showToast('GitHubの設定を行ってください', 'error'); return setShowSettings(true); }
+
+        // ステータス名のバリデーション
+        const invalidStats = formData.stats.filter(s => s.name && !ALLOWED_STATS.includes(s.name));
+        if (invalidStats.length > 0) {
+          const invalidNames = invalidStats.map(s => s.name).join(', ');
+          showToast(`エラー: 許可されていないステータス名が含まれています (${invalidNames})`, 'error');
+          return;
         }
-        btnOcr.addEventListener('click', runOCR);
 
-        btnScreenshot.addEventListener('click', async () => {
-            document.body.style.cursor = 'wait';
-            const ssLeftCol = document.getElementById('ss-left-col');
-            const ssRightCol = document.getElementById('ss-right-col');
-            ssLeftCol.innerHTML = '';
-            ssRightCol.innerHTML = '';
+        setIsSubmitting(true);
+        try {
+          const mainPath = `img/${formData.id}.jpg`;
+          const iconPath = `img/${formData.id}_icon.jpg`;
 
-            const headerClone = document.getElementById('ui-header').cloneNode(true);
-            headerClone.className = "border-b border-slate-800 pb-1 mb-1";
-            const h1 = headerClone.querySelector('h1');
-            if (h1) {
-                h1.className = "ss-no-wrap font-extrabold tracking-tighter";
-                h1.style.cssText = "background:none !important; color:#22d3ee !important; -webkit-text-fill-color:#22d3ee !important; font-size:14px !important; line-height:1 !important;";
-            }
-            const tagline = headerClone.querySelector('p');
-            if (tagline) tagline.style.display = 'none';
-            const timeInfo = headerClone.querySelector('#current-time');
-            if (timeInfo) {
-                timeInfo.className = "bg-transparent border-none p-0 text-[7px] h-auto flex items-center text-slate-600 font-mono mt-0.5";
-                timeInfo.querySelector('i')?.remove();
-            }
-            const memoTextarea = headerClone.querySelector('textarea');
-            if (memoTextarea) {
-                const val = memoInputHeader.value.trim();
-                const display = document.createElement('div');
-                display.className = "text-[7px] text-slate-400 font-mono text-left whitespace-pre-wrap leading-tight mt-1 px-1 border-l border-slate-800";
-                display.textContent = val || "";
-                if (!val) display.style.display = 'none';
-                memoTextarea.parentNode.replaceChild(display, memoTextarea);
-            }
-            headerClone.querySelector('button')?.remove();
-            ssLeftCol.appendChild(headerClone);
+          const mainSha = await checkFileExists(mainPath);
+          const iconSha = await checkFileExists(iconPath);
 
-            const statusClone = document.getElementById('ui-status').cloneNode(true);
-            statusClone.className = "bg-slate-900/50 border border-slate-800 rounded-sm p-2 shadow-md flex-1";
-            const sTitle = statusClone.querySelector('h2');
-            sTitle.className = "text-[8px] font-bold text-slate-400 flex items-center mb-1 ss-no-wrap";
-            sTitle.querySelector('i')?.remove();
-            statusClone.querySelectorAll('.flex.justify-between').forEach(row => {
-                const input = row.querySelector('input');
-                if (input) {
-                    const val = input.value || "0";
-                    const display = document.createElement('div');
-                    display.className = "text-[9px] font-mono font-bold text-slate-100 flex items-center justify-end h-full";
-                    display.textContent = val;
-                    input.parentNode.replaceChild(display, input);
-                    row.className = "flex justify-between items-center py-1 px-1 border-b border-slate-800/40";
-                    const label = row.querySelector('label');
-                    if (label) {
-                        label.className = "text-[8px] text-slate-500 ss-no-wrap flex items-center";
-                        const icon = label.querySelector('i');
-                        if (icon) {
-                            icon.setAttribute('data-lucide-width', '10');
-                            icon.setAttribute('data-lucide-height', '10');
-                            icon.style.cssText = "width:10px !important; height:10px !important; margin-right:4px !important;";
-                        }
-                    }
-                }
+          if (mainSha || iconSha) {
+            const isOk = await confirmOverwrite(`ID: ${formData.id} の画像データは既に存在します。上書きして登録を続行しますか？`);
+            if (!isOk) {
+              setIsSubmitting(false);
+              return;
+            }
+          }
+
+          const mainBase64 = await toBase64(mainImage);
+          const iconBase64 = await toBase64(iconImage);
+
+          await uploadToGitHub(mainPath, mainBase64, `Add/Update ${formData.name} image`, mainSha);
+          await uploadToGitHub(iconPath, iconBase64, `Add/Update ${formData.name} icon`, iconSha);
+
+          if (settings?.gasUrl) {
+            const payload = {
+              id: formData.id, name: formData.name, rank: formData.rank, rare: formData.rare, category: formData.category,
+              icon: iconPath, image: mainPath, special_status: formData.special_status, special_full_status: formData.special_full_status
+            };
+            formData.stats.forEach(s => { if (s.name && s.value) payload[s.name] = s.value; });
+
+            await fetch(settings.gasUrl, {
+              method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
             });
-            statusClone.querySelectorAll('p').forEach(p => p.style.display = 'none');
-            statusClone.querySelector('.hide-on-screenshot')?.remove();
-            ssLeftCol.appendChild(statusClone);
+          }
 
-            const resultClone = document.getElementById('ui-result').cloneNode(true);
-            resultClone.className = "bg-slate-900 border border-slate-800 rounded-sm p-2 shadow-md h-full";
-            const rTitle = resultClone.querySelector('h2');
-            rTitle.className = "text-[8px] font-bold text-cyan-600 flex items-center mb-1 ss-no-wrap";
-            rTitle.querySelector('i')?.remove();
-            const p = state.calculatedPoints;
-            const container = resultClone.querySelector('#results-container');
-            container.innerHTML = `
-                <div class="flex justify-between px-1 pb-1 text-[6px] font-bold text-slate-700 border-b border-slate-800/30 uppercase tracking-tighter ss-no-wrap"><span>Stat Name</span><span>Req.</span></div>
-                ${createResultRow('攻撃力', p.atk, 'atk', '', true)}
-                ${createResultRow('威圧', p.intimidation, 'intimidation', '', true)}
-                ${createResultRow('ダメージ倍率', p.dmgMul, 'dmgMul', '%', true)}
-                ${createResultRow('与ダメージ増加', p.dmgInc, 'dmgInc', '%', true)}
-                ${createResultRow('会心ダメージ', p.critDmg, 'critDmg', '%', true)}
-                ${createResultRow('対ボス与ダメ増', p.bossDmg, 'bossDmg', '%', true)}
-                ${createResultRow('状態異常与ダメ増', p.statusDmg, 'statusDmg', '%', true)}
-                ${createResultRow('対高HP与ダメ増', p.highHpDmg, 'highHpDmg', '%', true)}
-                ${createResultRow('対低HP与ダメ増', p.lowHpDmg, 'lowHpDmg', '%', true)}
-                ${createResultRow('防御無視', p.defIgn, 'defIgn', '', true)}
-            `;
-            resultClone.querySelectorAll('i[data-lucide="info"]').forEach(el => el.parentNode.remove());
-            ssRightCol.appendChild(resultClone);
+          showToast('登録が完了しました！');
+          setFormData({ id: '', name: '', rank: '', rare: '', category: '', special_status: '', special_full_status: '', stats: [] });
+          handleModeChange('single');
+          setIconImage(null); setIconImagePreview('');
+        } catch (err) {
+          console.error(err); showToast('エラーが発生しました: ' + err.message, 'error');
+        } finally { setIsSubmitting(false); }
+      };
 
-            const root = document.getElementById('screenshot-layout-root');
-            setTimeout(() => {
-                html2canvas(root, {
-                    backgroundColor: '#020617',
-                    scale: 2,
-                    logging: false,
-                    useCORS: true,
-                    width: 450
-                }).then(canvas => {
-                    document.body.style.cursor = 'default';
-                    screenshotImage.src = canvas.toDataURL('image/png');
-                    screenshotModal.classList.remove('hidden');
-                }).catch(err => {
-                    document.body.style.cursor = 'default';
-                    alert('保存に失敗しました。');
-                });
-            }, 600);
-        });
+      const handleSettingChange = (e) => {
+        const { name, value } = e.target;
+        setSettings(prev => ({ ...prev, [name]: value }));
+      };
+      
+      const saveSettings = () => {
+        localStorage.setItem('cardUploaderSettings', JSON.stringify(settings));
+        setShowSettings(false);
+        showToast('設定を保存しました');
+      };
 
-        btnCloseModal.addEventListener('click', () => {
-            screenshotModal.classList.add('hidden');
-            screenshotImage.src = '';
-        });
-        screenshotModal.addEventListener('click', (e) => {
-            if (e.target === screenshotModal) {
-                screenshotModal.classList.add('hidden');
-                screenshotImage.src = '';
-            }
-        });
+      const addStat = () => setFormData(p => ({ ...p, stats: [...p.stats, { id: Date.now(), name: '', value: '' }] }));
+      const updateStat = (id, f, v) => setFormData(p => ({ ...p, stats: p.stats.map(s => s.id === id ? { ...s, [f]: v } : s) }));
+      const removeStat = (id) => setFormData(p => ({ ...p, stats: p.stats.filter(s => s.id !== id) }));
+      const handleInputChange = (e) => setFormData(p => ({ ...p, [e.target.name]: e.target.value }));
+      const copyToClipboard = (text) => { navigator.clipboard.writeText(text); showToast(`「${text}」をコピーしました`); };
 
-        calculateAndRender();
-    </script>
+      const gasScriptText = `function doPost(e) {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var data = JSON.parse(e.postData.contents);
+  var headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  var row = new Array(headers.length).fill("");
+  for (var key in data) {
+    var val = data[key];
+    if (val === undefined || val === null || val === "") continue;
+    var idx = headers.indexOf(key);
+    if (idx !== -1) {
+      row[idx] = val;
+    } else {
+      sheet.insertColumnAfter(sheet.getLastColumn());
+      headers.push(key);
+      sheet.getRange(1, headers.length).setValue(key);
+      row.push(val);
+    }
+  }
+  sheet.insertRowBefore(2);
+  sheet.getRange(2, 1, 1, row.length).setValues([row]);
+  return ContentService.createTextOutput("Success");
+}`;
+
+      return (
+        <div className="min-h-screen bg-slate-50 pb-20 font-sans relative">
+          {toast.show && (
+            <div className={`fixed top-4 left-1/2 transform -translate-x-1/2 z-50 px-6 py-3 rounded-full shadow-lg text-white font-medium transition-opacity ${toast.type === 'error' ? 'bg-red-500' : 'bg-emerald-500'}`}>
+              {toast.message}
+            </div>
+          )}
+
+          {confirmDialog.isOpen && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
+              <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                <div className="p-6">
+                  <h3 className="text-xl font-bold text-slate-800 mb-3 flex items-center gap-2"><Icons.Wand2 /> 確認</h3>
+                  <p className="text-slate-600 leading-relaxed">{confirmDialog.message}</p>
+                </div>
+                <div className="bg-slate-50 px-6 py-4 flex justify-end gap-3 border-t border-slate-100">
+                  <button onClick={confirmDialog.onCancel} className="px-5 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-200 rounded-xl transition-colors">キャンセル</button>
+                  <button onClick={confirmDialog.onConfirm} className="px-5 py-2.5 text-sm font-bold text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors shadow-sm">上書きする</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {previewModalOpen && (
+            <div className="fixed inset-0 bg-slate-900/95 z-[60] flex flex-col items-center justify-center p-2 sm:p-6" onClick={() => setPreviewModalOpen(false)}>
+              <div className="w-full flex justify-between items-center mb-4 max-w-5xl">
+                <h3 className="text-white font-bold text-lg">画像プレビュー (アップロードされません)</h3>
+                <button onClick={() => setPreviewModalOpen(false)} className="bg-white/20 hover:bg-white/30 text-white p-2 rounded-full transition-colors">
+                  <Icons.X />
+                </button>
+              </div>
+              <div className="w-full flex-1 overflow-auto rounded-xl border border-slate-700 bg-black flex items-start justify-center" onClick={(e) => e.stopPropagation()}>
+                <img src={mainImagePreview} alt="Full Preview" className="block max-w-full md:max-w-none h-auto object-contain origin-top" />
+              </div>
+              <p className="text-slate-400 text-sm mt-4 text-center">※スマホの場合はピンチアウトで拡大して確認できます</p>
+            </div>
+          )}
+
+          <header className="bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center sticky top-0 z-10 shadow-sm">
+            <h1 className="text-xl font-bold text-slate-800 flex items-baseline gap-2">
+              <span className="text-indigo-500 self-center"><Icons.Wand2 /></span>
+              カードデータ登録ツール
+              <span className="text-sm font-medium text-slate-400 ml-2">v1.1.1</span>
+            </h1>
+            <div onClick={() => setShowSettings(true)} className="p-2 -mr-2 text-slate-500 hover:bg-slate-100 rounded-full transition-colors cursor-pointer relative z-20">
+              <Icons.Settings />
+            </div>
+          </header>
+
+          <main className="max-w-6xl mx-auto p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                <h2 className="text-lg font-bold text-slate-800 mb-5 border-b pb-3">1. 画像の選択と解析</h2>
+                <div className="space-y-5">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">カードID (ファイル名になります)</label>
+                    <input type="text" name="id" value={formData.id} onChange={handleInputChange} placeholder="例: 103206" className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none transition-shadow" />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">アイコン画像 (上部)</label>
+                    <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-slate-300 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors relative overflow-hidden">
+                      {iconImagePreview ? (
+                        <img src={iconImagePreview} alt="Icon Preview" className="absolute inset-0 w-full h-full object-contain p-2" />
+                      ) : (
+                        <div className="flex flex-col items-center justify-center text-slate-400">
+                          <Icons.Upload />
+                          <p className="text-sm text-slate-500 mt-2 font-medium">アイコンを選択</p>
+                        </div>
+                      )}
+                      <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageChange(e, 'icon')} />
+                    </label>
+                  </div>
+
+                  <div>
+                    <div className="flex justify-between items-center mb-1.5">
+                      <label className="block text-sm font-bold text-slate-700">カード詳細画像 (解析用)</label>
+                      <div className="flex bg-slate-100 p-1 rounded-lg">
+                        <button onClick={() => handleModeChange('single')} className={`px-3 py-1 text-xs font-bold rounded-md transition-shadow ${imageMode === 'single' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>1枚</button>
+                        <button onClick={() => handleModeChange('combine')} className={`px-3 py-1 text-xs font-bold rounded-md transition-shadow ${imageMode === 'combine' ? 'bg-white shadow text-indigo-600' : 'text-slate-500'}`}>2枚結合</button>
+                      </div>
+                    </div>
+
+                    {imageMode === 'single' ? (
+                      <label className="flex flex-col items-center justify-center w-full h-40 border-2 border-slate-300 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors relative overflow-hidden">
+                        {mainImagePreview ? (
+                          <img src={mainImagePreview} alt="Main Preview" className="absolute inset-0 w-full h-full object-contain p-2" />
+                        ) : (
+                          <div className="flex flex-col items-center justify-center text-slate-400">
+                            <Icons.Image />
+                            <p className="text-sm text-slate-500 mt-2 font-medium">クリックして画像を選択</p>
+                          </div>
+                        )}
+                        <input type="file" accept="image/*" className="hidden" onChange={(e) => handleImageChange(e, 'main')} />
+                      </label>
+                    ) : (
+                      <div className="grid grid-cols-2 gap-3 mb-3">
+                        <label className="flex flex-col items-center justify-center h-28 border-2 border-slate-300 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors relative overflow-hidden">
+                          {combineLeftPreview ? <img src={combineLeftPreview} className="absolute inset-0 w-full h-full object-contain p-1" /> : <div className="text-center text-slate-400"><Icons.Plus /><p className="text-xs mt-1 font-medium text-slate-500">左側の画像</p></div>}
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleCombineChange(e, 'left')} />
+                        </label>
+                        <label className="flex flex-col items-center justify-center h-28 border-2 border-slate-300 border-dashed rounded-2xl cursor-pointer bg-slate-50 hover:bg-slate-100 transition-colors relative overflow-hidden">
+                          {combineRightPreview ? <img src={combineRightPreview} className="absolute inset-0 w-full h-full object-contain p-1" /> : <div className="text-center text-slate-400"><Icons.Plus /><p className="text-xs mt-1 font-medium text-slate-500">右側の画像</p></div>}
+                          <input type="file" accept="image/*" className="hidden" onChange={(e) => handleCombineChange(e, 'right')} />
+                        </label>
+                      </div>
+                    )}
+
+                    {(imageMode === 'combine' && mainImagePreview) && (
+                      <div className="w-full h-40 border-2 border-slate-200 rounded-2xl relative overflow-hidden bg-slate-800 shadow-inner mb-3">
+                         <img src={mainImagePreview} className="absolute inset-0 w-full h-full object-contain" />
+                      </div>
+                    )}
+                    
+                    {mainImagePreview && (
+                      <button type="button" onClick={() => setPreviewModalOpen(true)} className="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-colors mb-2">
+                        <Icons.ZoomIn /> 結合画像を拡大確認 (テストモード)
+                      </button>
+                    )}
+
+                  </div>
+
+                  <button onClick={analyzeImage} disabled={isAnalyzing || !mainImage} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-white transition-all text-lg mt-2 ${isAnalyzing ? 'bg-indigo-300 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-md hover:shadow-lg'}`}>
+                    {isAnalyzing ? <span className="animate-pulse">Geminiが画像を解析中...</span> : <><Icons.Wand2 />画像からデータを自動入力</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                 <h2 className="text-lg font-bold text-slate-800 mb-5 border-b pb-3">2. データ確認・修正</h2>
+
+                 <div className="grid grid-cols-2 gap-4 mb-5">
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">名前</label>
+                     <input type="text" name="name" value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">カテゴリ</label>
+                     <input type="text" name="category" value={formData.category} onChange={handleInputChange} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">ランク (数字)</label>
+                     <input type="number" name="rank" value={formData.rank} onChange={handleInputChange} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">レア度</label>
+                     <input type="text" name="rare" value={formData.rare} onChange={handleInputChange} className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none font-medium" />
+                   </div>
+                 </div>
+
+                 <div className="space-y-4 mb-6">
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">特殊ステータス (武器・腕)</label>
+                     <input type="text" name="special_status" value={formData.special_status} onChange={handleInputChange} placeholder="例: 武器" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                   </div>
+                   <div>
+                     <label className="block text-xs font-bold text-slate-500 mb-1.5 uppercase">特殊ステータス詳細</label>
+                     <input type="text" name="special_full_status" value={formData.special_full_status} onChange={handleInputChange} placeholder="例: ラズリ+5" className="w-full px-3 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                   </div>
+                 </div>
+
+                 <div className="mb-8">
+                   <div className="flex justify-between items-center mb-3">
+                     <label className="block text-xs font-bold text-slate-500 uppercase">通常ステータス (数値)</label>
+                     <button onClick={addStat} className="text-xs flex items-center gap-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 bg-indigo-50 px-3 py-1.5 rounded-lg font-bold transition-colors"><Icons.Plus /> 追加</button>
+                   </div>
+                   <div className="mb-4 text-[10px] text-slate-500 bg-slate-50 p-3 rounded-xl border border-slate-100">
+                     <p className="font-bold mb-1.5 text-slate-700">登録可能なステータス候補 (タップでコピー):</p>
+                     <div className="flex flex-wrap gap-1.5">
+                       {ALLOWED_STATS.map(stat => (
+                         <span key={stat} onClick={() => copyToClipboard(stat)} className="bg-white px-2 py-1 rounded border border-slate-200 shadow-sm cursor-pointer hover:bg-indigo-50 hover:border-indigo-300 transition-colors active:scale-95 select-none">{stat}</span>
+                       ))}
+                     </div>
+                   </div>
+                   <datalist id="status-options">
+                     {ALLOWED_STATS.map(stat => <option key={stat} value={stat} />)}
+                   </datalist>
+                   <div className="space-y-3">
+                     {formData.stats.length === 0 && <p className="text-sm text-slate-400 italic text-center py-4 bg-slate-50 rounded-xl border border-slate-100">ステータスはありません</p>}
+                     {formData.stats.map((stat) => (
+                       <div key={stat.id} className="flex gap-2 items-center">
+                         <input type="text" list="status-options" value={stat.name} onChange={(e) => updateStat(stat.id, 'name', e.target.value)} placeholder="項目 (例: 攻撃%)" className="flex-1 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium" />
+                         <input type="text" value={stat.value} onChange={(e) => updateStat(stat.id, 'value', e.target.value)} placeholder="値 (例: 15)" className="w-24 px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 font-medium text-center" />
+                         <button onClick={() => removeStat(stat.id)} className="p-2.5 text-red-400 hover:text-red-600 hover:bg-red-50 rounded-xl transition-colors"><Icons.Trash2 /></button>
+                       </div>
+                     ))}
+                   </div>
+                 </div>
+
+                 <button onClick={handleSubmit} disabled={isSubmitting} className={`w-full py-4 rounded-2xl flex items-center justify-center gap-2 font-bold text-white transition-all text-lg ${isSubmitting ? 'bg-emerald-300 cursor-not-allowed' : 'bg-emerald-500 hover:bg-emerald-600 shadow-md hover:shadow-lg'}`}>
+                   {isSubmitting ? '登録処理中...' : <><Icons.Save /> GitHub & スプシに登録</>}
+                 </button>
+              </div>
+            </div>
+          </main>
+
+          {/* 設定モーダル */}
+          {showSettings && (
+            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[80] flex items-center justify-center p-4">
+              <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto relative z-[90]">
+                <div className="p-6 border-b border-slate-100 flex justify-between items-center sticky top-0 bg-white/90 backdrop-blur z-10">
+                  <h2 className="text-xl font-bold text-slate-800 flex items-center gap-2"><span className="text-slate-400"><Icons.Settings /></span> 環境設定</h2>
+                  <button type="button" onClick={() => setShowSettings(false)} className="text-slate-400 hover:bg-slate-100 p-2 rounded-full transition-colors cursor-pointer"><Icons.X /></button>
+                </div>
+                
+                <div className="p-6 space-y-6">
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">GitHub Personal Access Token (PAT)</label>
+                    <div className="relative">
+                      <input type={showSecrets ? "text" : "password"} name="githubToken" value={settings?.githubToken || ''} onChange={handleSettingChange} className="w-full pl-4 pr-12 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="ghp_xxxxxxxxxxxx" />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-indigo-500" onClick={() => setShowSecrets(!showSecrets)}>
+                        {showSecrets ? <Icons.EyeOff /> : <Icons.Eye />}
+                      </div>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">GitHub Repository</label>
+                    <input type="text" name="githubRepo" value={settings?.githubRepo || ''} onChange={handleSettingChange} className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="username/repository-name" />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">Gemini API Key</label>
+                    <div className="relative">
+                      <input type={showSecrets ? "text" : "password"} name="geminiKey" value={settings?.geminiKey || ''} onChange={handleSettingChange} className="w-full pl-4 pr-12 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="AIzaSy..." />
+                      <div className="absolute inset-y-0 right-0 flex items-center pr-3 cursor-pointer text-slate-400 hover:text-indigo-500" onClick={() => setShowSecrets(!showSecrets)}>
+                        {showSecrets ? <Icons.EyeOff /> : <Icons.Eye />}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="pt-5 border-t border-slate-100">
+                    <label className="block text-sm font-bold text-slate-700 mb-1.5">GAS Webアプリ URL</label>
+                    <input type="text" name="gasUrl" value={settings?.gasUrl || ''} onChange={handleSettingChange} className="w-full px-4 py-3 border border-slate-300 rounded-xl bg-slate-50 focus:bg-white focus:ring-2 focus:ring-indigo-500 outline-none transition-all font-mono" placeholder="https://script.google.com/..." />
+                  </div>
+                </div>
+
+                <div className="p-6 border-t border-slate-100 bg-slate-50 rounded-b-3xl">
+                  <button type="button" onClick={saveSettings} className="w-full py-4 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-2xl shadow-md transition-all">
+                    設定を保存して閉じる
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
 </body>
 </html>
